@@ -6,7 +6,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,7 +20,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Simple launcher UI
         TextView title = new TextView(this);
         title.setText("LE MOD MENU V1.0");
         title.setTextSize(22);
@@ -30,24 +31,30 @@ public class MainActivity extends Activity {
 
         Button startBtn = new Button(this);
         startBtn.setText("START MOD MENU");
-        startBtn.setOnClickListener(v -> {
-            if (checkOverlayPermission()) {
-                startService(new Intent(this, FloatingModMenuService.class));
-                Toast.makeText(this, "LE Mod Menu started", Toast.LENGTH_SHORT).show();
-            } else {
-                requestOverlayPermission();
+        startBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (checkOverlayPermission()) {
+                    startService(new Intent(MainActivity.this, FloatingModMenuService.class));
+                    Toast.makeText(MainActivity.this, "LE Mod Menu started", Toast.LENGTH_SHORT).show();
+                } else {
+                    requestOverlayPermission();
+                }
             }
         });
 
         Button stopBtn = new Button(this);
         stopBtn.setText("STOP MENU");
-        stopBtn.setOnClickListener(v -> {
-            stopService(new Intent(this, FloatingModMenuService.class));
-            Toast.makeText(this, "Menu stopped", Toast.LENGTH_SHORT).show();
+        stopBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stopService(new Intent(MainActivity.this, FloatingModMenuService.class));
+                Toast.makeText(MainActivity.this, "Menu stopped", Toast.LENGTH_SHORT).show();
+            }
         });
 
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(30, 30, 30, 30);
         layout.addView(title);
         layout.addView(info);
