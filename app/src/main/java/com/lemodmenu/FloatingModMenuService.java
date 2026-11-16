@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -15,23 +14,22 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.core.app.NotificationCompat;
-
 /**
  * LE MOD MENU - Floating Service
- * Basic floating overlay. Expand this for full feature rendering from native.
+ * AIDE-friendly version (no lambdas, no AndroidX)
  */
 public class FloatingModMenuService extends Service {
 
     static {
         try {
-            System.loadLibrary("lemodmenu"); // matches CMakeLists LOCAL_MODULE / lib name
+            System.loadLibrary("lemodmenu");
         } catch (UnsatisfiedLinkError e) {
             // Native lib not found - still allow Java-only overlay
         }
@@ -59,33 +57,41 @@ public class FloatingModMenuService extends Service {
 
     private void startForegroundNotification() {
         String channelId = "le_mod_menu_channel";
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     channelId, "LE Mod Menu", NotificationManager.IMPORTANCE_LOW);
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) manager.createNotificationChannel(channel);
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+
+            Notification notification = new Notification.Builder(this, channelId)
+                    .setContentTitle("LE MOD MENU V1.0")
+                    .setContentText("Floating menu is active")
+                    .setSmallIcon(android.R.drawable.ic_menu_manage)
+                    .build();
+
+            startForeground(1, notification);
+        } else {
+            Notification notification = new Notification.Builder(this)
+                    .setContentTitle("LE MOD MENU V1.0")
+                    .setContentText("Floating menu is active")
+                    .setSmallIcon(android.R.drawable.ic_menu_manage)
+                    .build();
+
+            startForeground(1, notification);
         }
-
-        Notification notification = new NotificationCompat.Builder(this, channelId)
-                .setContentTitle("LE MOD MENU V1.0")
-                .setContentText("Floating menu is active")
-                .setSmallIcon(android.R.drawable.ic_menu_manage)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build();
-
-        startForeground(1, notification);
     }
 
     private void createFloatingMenu() {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
-        // Root container
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.parseColor("#DD111111"));
         root.setPadding(24, 24, 24, 24);
 
-        // Title bar
         TextView title = new TextView(this);
         title.setText("LE MOD MENU V1.0");
         title.setTextColor(Color.WHITE);
@@ -93,12 +99,10 @@ public class FloatingModMenuService extends Service {
         title.setPadding(8, 8, 8, 16);
         root.addView(title);
 
-        // Feature container
         ScrollView scroll = new ScrollView(this);
         LinearLayout featuresLayout = new LinearLayout(this);
         featuresLayout.setOrientation(LinearLayout.VERTICAL);
 
-        // Try load features from native
         try {
             String[] features = getFeatureList();
             if (features != null) {
@@ -118,8 +122,11 @@ public class FloatingModMenuService extends Service {
                         Switch sw = new Switch(this);
                         sw.setText(feat.replace("Toggle_", "").replace("Switch_", ""));
                         sw.setTextColor(Color.WHITE);
-                        sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                            Changes(featNum, isChecked, 0, "");
+                        sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                            @Override
+                            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                                Changes(featNum, isChecked, 0, "");
+                            }
                         });
                         featuresLayout.addView(sw);
                     } else {
@@ -133,24 +140,33 @@ public class FloatingModMenuService extends Service {
             } else {
                 addDemoFeatures(featuresLayout);
             }
-        } catch (UnsatisfiedLinkError | Exception e) {
+        } catch (UnsatisfiedLinkError e) {
+            addDemoFeatures(featuresLayout);
+        } catch (Exception e) {
             addDemoFeatures(featuresLayout);
         }
 
         scroll.addView(featuresLayout);
         root.addView(scroll);
 
-        // Close button
         Button closeBtn = new Button(this);
         closeBtn.setText("CLOSE");
-        closeBtn.setOnClickListener(v -> stopSelf());
+        closeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stopSelf();
+            }
+        });
         root.addView(closeBtn);
 
         floatingView = root;
 
-        int layoutType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                : WindowManager.LayoutParams.TYPE_PHONE;
+        int layoutType;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            layoutType = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            layoutType = WindowManager.LayoutParams.TYPE_PHONE;
+        }
 
         params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -163,7 +179,6 @@ public class FloatingModMenuService extends Service {
         params.x = 100;
         params.y = 200;
 
-        // Drag support
         floatingView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY;
             private float initialTouchX, initialTouchY;
@@ -218,7 +233,9 @@ public class FloatingModMenuService extends Service {
         if (floatingView != null && windowManager != null) {
             try {
                 windowManager.removeView(floatingView);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                // ignore
+            }
         }
     }
 }
