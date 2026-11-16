@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
         title.setPadding(40, 80, 40, 20);
 
         TextView info = new TextView(this);
-        info.setText("Floating Native Mod Menu Starter\n\nGrant overlay permission then start the menu.");
+        info.setText("Floating Native Mod Menu\n\nGrant overlay permission then start.");
         info.setPadding(40, 20, 40, 40);
 
         Button startBtn = new Button(this);

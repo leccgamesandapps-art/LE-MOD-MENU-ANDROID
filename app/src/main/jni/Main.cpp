@@ -1,15 +1,18 @@
 #include <jni.h>
 #include <string>
-#include <vector>
 #include <android/log.h>
 #include <unistd.h>
 #include <pthread.h>
 
 #define LOG_TAG "LEModMenu"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Simple feature list (you expand this)
+// Feature list - same style as LGL
+// Category_  = not counted as feature
+// Toggle_    = switch
+// Button_    = button
+// SeekBar_   = slider (name_min_max)
+
 static const char* features[] = {
     "Category_Player",
     "Toggle_God Mode",
@@ -29,7 +32,7 @@ Java_com_lemodmenu_FloatingModMenuService_getFeatureList(JNIEnv *env, jobject th
     int count = 0;
     while (features[count] != NULL) count++;
 
-    jobjectArray ret = env->NewObjectArray(count, env->FindClass("java/lang/String"), nullptr);
+    jobjectArray ret = (jobjectArray) env->NewObjectArray(count, env->FindClass("java/lang/String"), NULL);
     for (int i = 0; i < count; i++) {
         env->SetObjectArrayElement(ret, i, env->NewStringUTF(features[i]));
     }
@@ -40,41 +43,49 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_lemodmenu_FloatingModMenuService_Changes(JNIEnv *env, jobject thiz,
                                                   jint featNum, jboolean booleanValue,
                                                   jint intValue, jstring strValue) {
-    LOGI("Feature %d changed. Bool: %d  Int: %d", featNum, booleanValue, intValue);
+    LOGI("Feature changed -> num: %d | bool: %d | int: %d", featNum, booleanValue, intValue);
 
-    // Example handling
     switch (featNum) {
         case 1: // God Mode
             if (booleanValue) {
-                LOGI("God Mode ON");
-                // TODO: apply your patch / hook here
+                LOGI("God Mode ENABLED");
+                // TODO: Your patch / hook here
             } else {
-                LOGI("God Mode OFF");
+                LOGI("God Mode DISABLED");
             }
             break;
+
         case 2: // Unlimited Health
             // TODO
             break;
-        // Add more cases matching your feature list order
+
+        case 3: // No Damage
+            // TODO
+            break;
+
+        case 5: // Unlimited Coins
+            // TODO
+            break;
+
         default:
             break;
     }
 }
 
-// Optional background thread for continuous mods
+// Background thread example
 void* hack_thread(void*) {
     LOGI("LE Mod Menu hack thread started");
     while (true) {
-        // Your continuous patches / memory writes go here
-        // Example: if (godMode) MemoryPatch(...);
-        sleep(1);
+        // Continuous mods here
+        sleep(2);
     }
-    return nullptr;
+    return NULL;
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    LOGI("LE MOD MENU V1.0 native library loaded");
+    LOGI("===== LE MOD MENU V1.0 Native Loaded =====");
+    // Uncomment to start background thread
     // pthread_t t;
-    // pthread_create(&t, nullptr, hack_thread, nullptr);
+    // pthread_create(&t, NULL, hack_thread, NULL);
     return JNI_VERSION_1_6;
 }

@@ -21,17 +21,13 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/**
- * LE MOD MENU - Floating Service
- * AIDE-friendly version (no lambdas, no AndroidX)
- */
 public class FloatingModMenuService extends Service {
 
     static {
         try {
             System.loadLibrary("lemodmenu");
         } catch (UnsatisfiedLinkError e) {
-            // Native lib not found - still allow Java-only overlay
+            // Native not found - demo mode
         }
     }
 
@@ -39,7 +35,7 @@ public class FloatingModMenuService extends Service {
     private View floatingView;
     private WindowManager.LayoutParams params;
 
-    // Native methods (implemented in Main.cpp)
+    // Native methods
     public native String[] getFeatureList();
     public native void Changes(int featNum, boolean booleanValue, int intValue, String strValue);
 
@@ -105,7 +101,7 @@ public class FloatingModMenuService extends Service {
 
         try {
             String[] features = getFeatureList();
-            if (features != null) {
+            if (features != null && features.length > 0) {
                 for (int i = 0; i < features.length; i++) {
                     final int featNum = i;
                     String feat = features[i];
@@ -211,20 +207,25 @@ public class FloatingModMenuService extends Service {
 
     private void addDemoFeatures(LinearLayout layout) {
         TextView demo = new TextView(this);
-        demo.setText("Demo Features (Native not loaded)");
+        demo.setText("Demo Mode (Native not loaded)");
         demo.setTextColor(Color.YELLOW);
         demo.setPadding(8, 8, 8, 16);
         layout.addView(demo);
 
         Switch s1 = new Switch(this);
-        s1.setText("God Mode (Demo)");
+        s1.setText("God Mode");
         s1.setTextColor(Color.WHITE);
         layout.addView(s1);
 
         Switch s2 = new Switch(this);
-        s2.setText("Unlimited Coins (Demo)");
+        s2.setText("Unlimited Coins");
         s2.setTextColor(Color.WHITE);
         layout.addView(s2);
+
+        Switch s3 = new Switch(this);
+        s3.setText("No Damage");
+        s3.setTextColor(Color.WHITE);
+        layout.addView(s3);
     }
 
     @Override
