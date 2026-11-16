@@ -7,13 +7,13 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_menu_manage"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:label="LE MOD MENU"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.lemodmenu.MainActivity"
             android:exported="true"
             android:theme="@android:style/Theme.DeviceDefault">
             <intent-filter>
@@ -23,7 +23,7 @@
         </activity>
 
         <service
-            android:name=".FloatingModMenuService"
+            android:name="com.lemodmenu.FloatingModMenuService"
             android:enabled="true"
             android:exported="false"
             android:stopWithTask="true" />
