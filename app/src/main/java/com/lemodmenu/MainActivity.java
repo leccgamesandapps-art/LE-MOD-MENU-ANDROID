@@ -6,10 +6,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -20,73 +16,47 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        TextView title = new TextView(this);
-        title.setText("LE MOD MENU V1.0");
-        title.setTextSize(22);
-        title.setPadding(40, 80, 40, 20);
-
-        TextView info = new TextView(this);
-        info.setText("Floating Native Mod Menu\n\nGrant overlay permission then start.");
-        info.setPadding(40, 20, 40, 40);
-
-        Button startBtn = new Button(this);
-        startBtn.setText("START MOD MENU");
-        startBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (checkOverlayPermission()) {
-                    startService(new Intent(MainActivity.this, FloatingModMenuService.class));
-                    Toast.makeText(MainActivity.this, "LE Mod Menu started", Toast.LENGTH_SHORT).show();
-                } else {
-                    requestOverlayPermission();
-                }
+        // Check overlay permission first
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                // Go directly to Display over other apps settings
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, OVERLAY_PERMISSION_CODE);
+                Toast.makeText(this, "Please allow Display over other apps", Toast.LENGTH_LONG).show();
+                return;
             }
-        });
+        }
 
-        Button stopBtn = new Button(this);
-        stopBtn.setText("STOP MENU");
-        stopBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                stopService(new Intent(MainActivity.this, FloatingModMenuService.class));
-                Toast.makeText(MainActivity.this, "Menu stopped", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(30, 30, 30, 30);
-        layout.addView(title);
-        layout.addView(info);
-        layout.addView(startBtn);
-        layout.addView(stopBtn);
-
-        setContentView(layout);
+        // Permission already granted → start menu automatically
+        startModMenu();
     }
 
-    private boolean checkOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return Settings.canDrawOverlays(this);
+    private void startModMenu() {
+        try {
+            startService(new Intent(this, FloatingModMenuService.class));
+            Toast.makeText(this, "LE Mod Menu started", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to start menu", Toast.LENGTH_SHORT).show();
         }
-        return true;
-    }
-
-    private void requestOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
-            startActivityForResult(intent, OVERLAY_PERMISSION_CODE);
-        }
+        // Close the activity so only floating menu remains
+        finish();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == OVERLAY_PERMISSION_CODE) {
-            if (checkOverlayPermission()) {
-                startService(new Intent(this, FloatingModMenuService.class));
-            } else {
-                Toast.makeText(this, "Overlay permission is required", Toast.LENGTH_LONG).show();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    // User granted permission → start menu
+                    startModMenu();
+                } else {
+                    // Still not granted
+                    Toast.makeText(this, "Overlay permission is required", Toast.LENGTH_LONG).show();
+                    finish();
+                }
             }
         }
     }
