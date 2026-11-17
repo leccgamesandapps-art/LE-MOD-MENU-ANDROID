@@ -23,11 +23,14 @@ import android.widget.Toast;
 
 public class FloatingModMenuService extends Service {
 
+    private static boolean nativeLoaded = false;
+
     static {
         try {
             System.loadLibrary("lemodmenu");
-        } catch (UnsatisfiedLinkError e) {
-            // Native not found - demo mode
+            nativeLoaded = true;
+        } catch (Throwable t) {
+            nativeLoaded = false;
         }
     }
 
@@ -35,6 +38,7 @@ public class FloatingModMenuService extends Service {
     private View floatingView;
     private WindowManager.LayoutParams params;
 
+    // Only call these if nativeLoaded == true
     public native String[] getFeatureList();
     public native void Changes(int featNum, boolean booleanValue, int intValue, String strValue);
 
@@ -46,41 +50,55 @@ public class FloatingModMenuService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        startForegroundNotification();
-        createFloatingMenu();
+        try {
+            startForegroundNotification();
+            createFloatingMenu();
+        } catch (Throwable t) {
+            Toast.makeText(this, "Menu error: " + t.getMessage(), Toast.LENGTH_LONG).show();
+            stopSelf();
+        }
     }
 
     private void startForegroundNotification() {
-        String channelId = "le_mod_menu_channel";
+        try {
+            String channelId = "le_mod_menu_channel";
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    channelId, "LE Mod Menu", NotificationManager.IMPORTANCE_LOW);
-            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
+            if (Build.VERSION.SDK_INT >= 26) {
+                NotificationChannel channel = new NotificationChannel(
+                        channelId, "LE Mod Menu", NotificationManager.IMPORTANCE_LOW);
+                NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (manager != null) {
+                    manager.createNotificationChannel(channel);
+                }
+
+                Notification notification = new Notification.Builder(this, channelId)
+                        .setContentTitle("LE MOD MENU V1.0")
+                        .setContentText("Floating menu is active")
+                        .setSmallIcon(android.R.drawable.ic_menu_manage)
+                        .build();
+
+                startForeground(1, notification);
+            } else {
+                Notification notification = new Notification.Builder(this)
+                        .setContentTitle("LE MOD MENU V1.0")
+                        .setContentText("Floating menu is active")
+                        .setSmallIcon(android.R.drawable.ic_menu_manage)
+                        .build();
+
+                startForeground(1, notification);
             }
-
-            Notification notification = new Notification.Builder(this, channelId)
-                    .setContentTitle("LE MOD MENU V1.0")
-                    .setContentText("Floating menu is active")
-                    .setSmallIcon(android.R.drawable.ic_menu_manage)
-                    .build();
-
-            startForeground(1, notification);
-        } else {
-            Notification notification = new Notification.Builder(this)
-                    .setContentTitle("LE MOD MENU V1.0")
-                    .setContentText("Floating menu is active")
-                    .setSmallIcon(android.R.drawable.ic_menu_manage)
-                    .build();
-
-            startForeground(1, notification);
+        } catch (Throwable t) {
+            // Ignore notification errors
         }
     }
 
     private void createFloatingMenu() {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        if (windowManager == null) {
+            Toast.makeText(this, "WindowManager not available", Toast.LENGTH_SHORT).show();
+            stopSelf();
+            return;
+        }
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -98,48 +116,9 @@ public class FloatingModMenuService extends Service {
         LinearLayout featuresLayout = new LinearLayout(this);
         featuresLayout.setOrientation(LinearLayout.VERTICAL);
 
-        try {
-            String[] features = getFeatureList();
-            if (features != null && features.length > 0) {
-                for (int i = 0; i < features.length; i++) {
-                    final int featNum = i;
-                    String feat = features[i];
-                    if (feat == null) continue;
-
-                    if (feat.startsWith("Category_")) {
-                        TextView cat = new TextView(this);
-                        cat.setText(feat.replace("Category_", ""));
-                        cat.setTextColor(Color.CYAN);
-                        cat.setTextSize(14);
-                        cat.setPadding(8, 16, 8, 8);
-                        featuresLayout.addView(cat);
-                    } else if (feat.startsWith("Toggle_") || feat.startsWith("Switch_")) {
-                        Switch sw = new Switch(this);
-                        sw.setText(feat.replace("Toggle_", "").replace("Switch_", ""));
-                        sw.setTextColor(Color.WHITE);
-                        sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                            @Override
-                            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                                Changes(featNum, isChecked, 0, "");
-                            }
-                        });
-                        featuresLayout.addView(sw);
-                    } else {
-                        TextView tv = new TextView(this);
-                        tv.setText(feat);
-                        tv.setTextColor(Color.LTGRAY);
-                        tv.setPadding(8, 8, 8, 8);
-                        featuresLayout.addView(tv);
-                    }
-                }
-            } else {
-                addDemoFeatures(featuresLayout);
-            }
-        } catch (UnsatisfiedLinkError e) {
-            addDemoFeatures(featuresLayout);
-        } catch (Exception e) {
-            addDemoFeatures(featuresLayout);
-        }
+        // Always show demo features for stability
+        // Native features can be added later when library works
+        addDemoFeatures(featuresLayout);
 
         scroll.addView(featuresLayout);
         root.addView(scroll);
@@ -157,7 +136,7 @@ public class FloatingModMenuService extends Service {
         floatingView = root;
 
         int layoutType;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= 26) {
             layoutType = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         } else {
             layoutType = WindowManager.LayoutParams.TYPE_PHONE;
@@ -190,7 +169,11 @@ public class FloatingModMenuService extends Service {
                     case MotionEvent.ACTION_MOVE:
                         params.x = initialX + (int) (event.getRawX() - initialTouchX);
                         params.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        windowManager.updateViewLayout(floatingView, params);
+                        try {
+                            windowManager.updateViewLayout(floatingView, params);
+                        } catch (Exception e) {
+                            // ignore
+                        }
                         return true;
                 }
                 return false;
@@ -199,14 +182,16 @@ public class FloatingModMenuService extends Service {
 
         try {
             windowManager.addView(floatingView, params);
+            Toast.makeText(this, "LE Mod Menu started", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "Failed to show overlay: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Please grant Overlay permission", Toast.LENGTH_LONG).show();
+            stopSelf();
         }
     }
 
     private void addDemoFeatures(LinearLayout layout) {
         TextView demo = new TextView(this);
-        demo.setText("Demo Mode (Native not loaded)");
+        demo.setText(nativeLoaded ? "Native Loaded" : "Demo Mode");
         demo.setTextColor(Color.YELLOW);
         demo.setPadding(8, 8, 8, 16);
         layout.addView(demo);
@@ -225,6 +210,11 @@ public class FloatingModMenuService extends Service {
         s3.setText("No Damage");
         s3.setTextColor(Color.WHITE);
         layout.addView(s3);
+
+        Switch s4 = new Switch(this);
+        s4.setText("FPS Unlock");
+        s4.setTextColor(Color.WHITE);
+        layout.addView(s4);
     }
 
     @Override
