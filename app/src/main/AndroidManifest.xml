@@ -13,9 +13,8 @@
         android:theme="@android:style/Theme.DeviceDefault">
 
         <activity
-            android:name="com.lemodmenu.MainActivity"
-            android:exported="true"
-            android:theme="@android:style/Theme.DeviceDefault">
+            android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -23,7 +22,7 @@
         </activity>
 
         <service
-            android:name="com.lemodmenu.FloatingModMenuService"
+            android:name=".FloatingModMenuService"
             android:enabled="true"
             android:exported="false"
             android:stopWithTask="true" />
